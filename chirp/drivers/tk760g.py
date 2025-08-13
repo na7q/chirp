@@ -997,9 +997,9 @@ class Kenwood_Serie_60G(chirp_common.CloneModeRadio,
         mem.extra.append(bank)
 
         # validate bnumb
-        if int(_mem.bnumb) > 127:
-            _mem.bank = mem.number
-
+        if int(_mem.bnumb) == 0 or int(_mem.bnumb) > 128:
+            _mem.bnumb = number
+            
         bnumb = RadioSetting("bnumb", "Bank index",
                              RadioSettingValueInteger(0, 127, _mem.bnumb))
         mem.extra.append(bnumb)
@@ -1080,15 +1080,18 @@ class Kenwood_Serie_60G(chirp_common.CloneModeRadio,
         # scan add property
         self._set_scan(mem.number - 1, mem.skip)
 
-        # bank and number in the channel
-        if int(_mem.bnumb) == 0xff:
-            _mem.bnumb = mem.number - 1
-            _mem.bank = 1
+        # bank and number in the channel (Kenwood is 1-based)
+        if int(_mem.bnumb) in (0x00, 0xff):
+            _mem.bnumb = mem.number           # CH1 -> 0x01, CH2 -> 0x02, ...
+        if int(_mem.bank) in (0x00, 0xff):
+            _mem.bank = 1                     # default to bank 1
 
         # extra settings
         for setting in mem.extra:
-            if setting != "bank" or setting != "bnumb":
-                setattr(_mem, setting.get_name(), not bool(setting.value))
+            name = setting.get_name()
+            if name in ("bank", "bnumb"):
+                continue
+            setattr(_mem, name, not bool(setting.value))
 
         # all data get sync after channel mod
         self._prep_data()
